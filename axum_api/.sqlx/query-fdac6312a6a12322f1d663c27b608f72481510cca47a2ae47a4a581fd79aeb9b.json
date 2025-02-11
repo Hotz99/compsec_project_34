@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, text, completed, created_at FROM todos WHERE text LIKE ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "text",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "completed",
+        "ordinal": 2,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 3,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fdac6312a6a12322f1d663c27b608f72481510cca47a2ae47a4a581fd79aeb9b"
+}
