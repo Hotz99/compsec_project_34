@@ -1,10 +1,10 @@
-use crate::entities::User;
+use crate::entities::{AuthReqeust, User};
 use axum::{extract::Extension, http::StatusCode, Json};
 use sqlx::sqlite::SqlitePool;
 
 pub async fn sign_up(
     Extension(sqlite_pool): Extension<SqlitePool>,
-    Json(user): Json<User>,
+    Json(user): Json<AuthReqeust>,
 ) -> StatusCode {
     match sqlx::query!(
         "INSERT INTO users (username, password) VALUES (?, ?)",
@@ -14,6 +14,7 @@ pub async fn sign_up(
     .execute(&sqlite_pool)
     .await
     {
+        // TODO: Either the frontend should redirect to sign in or we should return a token/cookie
         Ok(_) => StatusCode::CREATED,
         Err(_) => StatusCode::CONFLICT,
     }
@@ -21,7 +22,7 @@ pub async fn sign_up(
 
 pub async fn sign_in(
     Extension(sqlite_pool): Extension<SqlitePool>,
-    Json(credentials): Json<User>,
+    Json(credentials): Json<AuthReqeust>,
 ) -> StatusCode {
     let user = sqlx::query_as!(
         User,
@@ -33,6 +34,7 @@ pub async fn sign_in(
     .unwrap();
 
     match user {
+        // TODO: return userid if password matches
         Some(u) if u.password == credentials.password => StatusCode::OK,
         _ => StatusCode::UNAUTHORIZED,
     }

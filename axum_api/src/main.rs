@@ -22,8 +22,8 @@ async fn run_server() -> Result<(), sqlx::Error> {
     crud_ops::seed_data(&sqlite_pool).await;
 
     let app = Router::new()
-        .route("/sign_up", post(authentication::sign_up))
-        .route("/sign_in", post(authentication::sign_in))
+        .route("/signup", post(authentication::sign_up))
+        .route("/login", post(authentication::sign_in))
         .route(
             "/todos",
             post(crud_ops::create_todo).get(crud_ops::get_todos),

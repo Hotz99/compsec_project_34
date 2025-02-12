@@ -10,9 +10,15 @@ pub struct Todo {
     pub created_at: chrono::NaiveDateTime,
 }
 
-#[derive(Clone, FromRow, Serialize, Deserialize)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct User {
     pub id: i64,
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(serde::Deserialize)]
+pub struct AuthReqeust {
     pub username: String,
     pub password: String,
 }
