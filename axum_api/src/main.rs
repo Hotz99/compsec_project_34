@@ -1,195 +1,35 @@
+mod authentication;
+mod crud_ops;
+mod entities;
+
 use axum::{
-    extract::{Extension, Path, Query},
-    http::StatusCode,
-    response::IntoResponse,
-    routing::{delete, get, post, put},
-    Json, Router,
+    extract::Extension,
+    routing::{get, post, put},
+    Router,
 };
-use serde::{Deserialize, Serialize};
-use sqlx::{sqlite::SqlitePoolOptions, FromRow, SqlitePool};
+use serde::Deserialize;
+use sqlx::sqlite::SqlitePoolOptions;
 use tokio::net::TcpListener;
 
-#[derive(Clone, FromRow, Serialize, Deserialize)]
-struct Todo {
-    id: i64,
-    text: String,
-    completed: bool,
-    created_at: chrono::NaiveDateTime,
-}
-
-#[derive(Clone, FromRow, Serialize, Deserialize)]
-struct User {
-    id: i64,
-    username: String,
-    password: String,
-}
-
-async fn signup(Extension(pool): Extension<SqlitePool>, Json(user): Json<User>) -> StatusCode {
-    match sqlx::query!(
-        "INSERT INTO users (username, password) VALUES (?, ?)",
-        user.username,
-        user.password
-    )
-    .execute(&pool)
-    .await
-    {
-        Ok(_) => StatusCode::CREATED,
-        Err(_) => StatusCode::CONFLICT,
-    }
-}
-
-async fn login(
-    Extension(pool): Extension<SqlitePool>,
-    Json(credentials): Json<User>,
-) -> StatusCode {
-    let user = sqlx::query_as!(
-        User,
-        "SELECT * FROM users WHERE username = ?",
-        credentials.username
-    )
-    .fetch_optional(&pool)
-    .await
-    .unwrap();
-
-    match user {
-        Some(u) if u.password == credentials.password => StatusCode::OK,
-        _ => StatusCode::UNAUTHORIZED,
-    }
-}
-
-async fn create_todo(Extension(pool): Extension<SqlitePool>, Json(todo): Json<Todo>) -> StatusCode {
-    match sqlx::query!(
-        "INSERT INTO todos (text, completed) VALUES (?, ?)",
-        todo.text,
-        todo.completed
-    )
-    .execute(&pool)
-    .await
-    {
-        Ok(_) => StatusCode::CREATED,
-        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
-    }
-}
-
-async fn get_todos(Extension(pool): Extension<SqlitePool>) -> Json<Vec<Todo>> {
-    let todos = sqlx::query_as!(Todo, "SELECT * FROM todos")
-        .fetch_all(&pool)
-        .await
-        .unwrap();
-    Json(todos)
-}
-
-async fn update_todo(
-    Path(id): Path<i64>,
-    Extension(pool): Extension<SqlitePool>,
-    Json(todo): Json<Todo>,
-) -> StatusCode {
-    let result = sqlx::query!(
-        "UPDATE todos SET text = ?, completed = ? WHERE id = ?",
-        todo.text,
-        todo.completed,
-        id
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
-
-    if result.rows_affected() > 0 {
-        StatusCode::OK
-    } else {
-        StatusCode::NOT_FOUND
-    }
-}
-
-async fn delete_todo(Path(id): Path<i64>, Extension(pool): Extension<SqlitePool>) -> StatusCode {
-    let result = sqlx::query!("DELETE FROM todos WHERE id = ?", id)
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    if result.rows_affected() > 0 {
-        StatusCode::OK
-    } else {
-        StatusCode::NOT_FOUND
-    }
-}
-
-#[derive(Deserialize)]
-struct SearchQuery {
-    query: String,
-}
-
-async fn search_todos(
-    Query(params): Query<SearchQuery>,
-    Extension(pool): Extension<SqlitePool>,
-) -> impl IntoResponse {
-    // direct string interpolation to allow for sql injection
-    let sql = format!(
-        "SELECT id, text, completed, created_at FROM todos WHERE text LIKE '%{}%'",
-        params.query
-    );
-
-    let todos = sqlx::query_as::<_, Todo>(&sql)
-        .fetch_all(&pool)
-        .await
-        .unwrap();
-
-    Json(todos)
-}
-
-async fn seed_db(sqlite_pool: &SqlitePool) {
-    sqlx::query!("DELETE FROM users")
-        .execute(sqlite_pool)
-        .await
-        .unwrap();
-    sqlx::query!("DELETE FROM todos")
-        .execute(sqlite_pool)
-        .await
-        .unwrap();
-
-    // vulnerable test data
-    sqlx::query!(
-        "INSERT INTO users (username, password) VALUES (?, ?)",
-        "admin",
-        "admin"
-    )
-    .execute(sqlite_pool)
-    .await
-    .unwrap();
-
-    sqlx::query!(
-        "INSERT INTO todos (text, completed) VALUES (?, ?)",
-        // should appear in query results
-        "find me",
-        false
-    )
-    .execute(sqlite_pool)
-    .await
-    .unwrap();
-
-    sqlx::query!(
-        "INSERT INTO todos (text, completed) VALUES (?, ?)",
-        // should not appear in normal queries
-        "secret data",
-        true
-    )
-    .execute(sqlite_pool)
-    .await
-    .unwrap();
-}
 async fn run_server() -> Result<(), sqlx::Error> {
     let sqlite_pool = SqlitePoolOptions::new()
         .connect("sqlite:./insecure.db")
         .await?;
 
-    seed_db(&sqlite_pool).await;
+    crud_ops::seed_data(&sqlite_pool).await;
 
     let app = Router::new()
-        .route("/signup", post(signup))
-        .route("/login", post(login))
-        .route("/todos", post(create_todo).get(get_todos))
-        .route("/todos/{id}", put(update_todo).delete(delete_todo))
-        .route("/search", get(search_todos))
+        .route("/sign_up", post(authentication::sign_up))
+        .route("/sign_in", post(authentication::sign_in))
+        .route(
+            "/todos",
+            post(crud_ops::create_todo).get(crud_ops::get_todos),
+        )
+        .route(
+            "/todos/{id}",
+            put(crud_ops::update_todo).delete(crud_ops::delete_todo),
+        )
+        .route("/search", get(crud_ops::search_todos))
         .layer(Extension(sqlite_pool));
 
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -220,10 +60,11 @@ async fn test_security() {
         .await
         .unwrap();
 
-    let todos: Vec<Todo> = response.json().await.unwrap();
+    let todos: Vec<entities::Todo> = response.json().await.unwrap();
 
     // should return all todos
-    assert_eq!(todos.len(), 2);
+    // TODO todo count should not be hardcoded
+    assert_eq!(todos.len(), 3);
 
     // broken access control: unauthenticated deletion
     let response = client
@@ -235,8 +76,8 @@ async fn test_security() {
 
     // cryptographic failures: plaintext password storage
     let response = client
-        .post("http://localhost:3000/login")
-        .json(&User {
+        .post("http://localhost:3000/sign_in")
+        .json(&entities::User {
             id: 0,
             username: "admin".into(),
             password: "admin".into(),
@@ -250,7 +91,7 @@ async fn test_security() {
     for _ in 0..10 {
         let response = client
             .post("http://localhost:3000/login")
-            .json(&User {
+            .json(&entities::User {
                 id: 0,
                 username: "admin".into(),
                 password: "wrong".into(),

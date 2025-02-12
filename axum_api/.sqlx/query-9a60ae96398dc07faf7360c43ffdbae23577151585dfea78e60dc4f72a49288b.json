@@ -9,18 +9,23 @@
         "type_info": "Integer"
       },
       {
-        "name": "text",
+        "name": "user_id",
         "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "text",
+        "ordinal": 2,
         "type_info": "Text"
       },
       {
         "name": "completed",
-        "ordinal": 2,
+        "ordinal": 3,
         "type_info": "Bool"
       },
       {
         "name": "created_at",
-        "ordinal": 3,
+        "ordinal": 4,
         "type_info": "Datetime"
       }
     ],
@@ -28,6 +33,7 @@
       "Right": 0
     },
     "nullable": [
+      false,
       false,
       false,
       false,
