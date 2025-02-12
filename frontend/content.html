@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Todo App</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 400px;
+        margin: auto;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        display: flex;
+        align-items: center;
+        margin: 5px 0;
+      }
+      button {
+        margin-left: auto;
+      }
+      div {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .completed {
+        text-decoration: line-through;
+        color: gray;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h2>Todo List</h2>
+      <button
+        onclick="document.cookie = 'userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC'; window.location.href = 'login.html';"
+      >
+        Logout
+      </button>
+    </div>
+    <input type="text" id="newTodo" placeholder="New todo" />
+    <button onclick="addTodo()">Add</button>
+    <ul id="todoList"></ul>
+
+    <script>
+      // function isValidId(str) {
+      //   var n = Math.floor(Number(str));
+      //   return n !== Infinity && String(n) === str && n >= 0;
+      // }
+
+      // Check if userId cookie is set, otherwise redirect to login page
+      // const cookieExists = document.cookie.includes("userId");
+      // const userId = document.cookie.split("userId=")[1];
+      //
+      // if (!cookieExists || !isValidId(userId)) {
+      //   window.location.href = "login.html";
+      // }
+
+      // console.log(document.cookie);
+      // console.log(typeof userId);
+      const apiUrl = "http://localhost:3000";
+
+      async function fetchTodos() {
+        // const response = await fetch(`${apiUrl}?userId=${userId}`);
+        const response = await fetch(`${apiUrl}/todos`);
+        const todos = await response.json();
+        renderTodos(todos);
+      }
+
+      function renderTodos(todos) {
+        const list = document.getElementById("todoList");
+        list.innerHTML = "";
+        todos.forEach((todo) => {
+          const li = document.createElement("li");
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = todo.completed;
+          checkbox.onchange = () => toggleTodo(todo);
+
+          const textSpan = document.createElement("span");
+          textSpan.textContent = todo.text;
+          if (todo.completed) textSpan.classList.add("completed");
+
+          li.appendChild(checkbox);
+          li.appendChild(textSpan);
+
+          const delBtn = document.createElement("button");
+          delBtn.innerText = "❌";
+          delBtn.onclick = () => deleteTodo(todo.id);
+          li.appendChild(delBtn);
+
+          list.appendChild(li);
+        });
+      }
+
+      async function addTodo() {
+        const text = document.getElementById("newTodo").value;
+        if (!text.trim()) return;
+
+        // TODO: replace with actual user id
+        const user_id = 1;
+
+        await fetch(`${apiUrl}/todos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: -1,
+            user_id: user_id,
+            text: text,
+            completed: false,
+            created_at: "2021-06-01T00:00:00.000",
+          }),
+        });
+
+        document.getElementById("newTodo").value = "";
+        fetchTodos();
+      }
+
+      async function toggleTodo(todo) {
+        await fetch(`${apiUrl}/todos/${todo.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...todo,
+            completed: !todo.completed,
+          }),
+        });
+        fetchTodos();
+      }
+
+      async function deleteTodo(id) {
+        await fetch(`${apiUrl}/todos/${id}`, { method: "DELETE" });
+        fetchTodos();
+      }
+
+      fetchTodos();
+    </script>
+  </body>
+</html>
