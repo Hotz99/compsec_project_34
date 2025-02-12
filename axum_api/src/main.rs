@@ -3,6 +3,7 @@ mod crud_ops;
 mod entities;
 
 use axum::{
+    http::Method,
     extract::Extension,
     routing::{get, post, put},
     Router,
@@ -10,6 +11,8 @@ use axum::{
 use serde::Deserialize;
 use sqlx::sqlite::SqlitePoolOptions;
 use tokio::net::TcpListener;
+use tower_http::trace::TraceLayer;
+use tower_http::cors::{CorsLayer, Any};
 
 async fn run_server() -> Result<(), sqlx::Error> {
     let sqlite_pool = SqlitePoolOptions::new()
@@ -30,6 +33,11 @@ async fn run_server() -> Result<(), sqlx::Error> {
             put(crud_ops::update_todo).delete(crud_ops::delete_todo),
         )
         .route("/search", get(crud_ops::search_todos))
+        .layer(CorsLayer::new()
+            .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+            .allow_origin(Any)
+            .allow_headers(Any))
+        .layer(TraceLayer::new_for_http())
         .layer(Extension(sqlite_pool));
 
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
