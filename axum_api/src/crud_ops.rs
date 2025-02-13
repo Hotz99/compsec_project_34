@@ -93,12 +93,10 @@ pub async fn search_todos(
         id,
         params.query
     );
-    println!("sql: {}", sql);
     let todos = sqlx::query_as::<_, Todo>(&sql)
         .fetch_all(&sqlite_pool)
         .await
         .unwrap();
-    println!("todos: {:?}", todos);
     Json(todos)
 }
 
