@@ -52,8 +52,9 @@
 
         if (response.ok) {
           const msg = await response.json();
+          console.log(msg);
           // Store the user ID in a cookie
-          document.cookie = `userId=${msg.userId}`;
+          document.cookie = `userId=${msg}`;
           console.log("Logged in as", document.cookie);
           // Redirect to the content page
           window.location.href = "content.html";

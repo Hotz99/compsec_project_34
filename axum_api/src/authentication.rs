@@ -1,5 +1,5 @@
 use crate::entities::{AuthReqeust, User};
-use axum::{extract::Extension, http::StatusCode, Json};
+use axum::{extract::Extension, http::StatusCode, response::IntoResponse, Json};
 use sqlx::sqlite::SqlitePool;
 
 pub async fn sign_up(
@@ -23,7 +23,7 @@ pub async fn sign_up(
 pub async fn sign_in(
     Extension(sqlite_pool): Extension<SqlitePool>,
     Json(credentials): Json<AuthReqeust>,
-) -> StatusCode {
+) -> impl IntoResponse {
     let user = sqlx::query_as!(
         User,
         "SELECT * FROM users WHERE username = ?",
@@ -35,7 +35,7 @@ pub async fn sign_in(
 
     match user {
         // TODO: return userid if password matches
-        Some(u) if u.password == credentials.password => StatusCode::OK,
-        _ => StatusCode::UNAUTHORIZED,
+        Some(u) if u.password == credentials.password => (StatusCode::OK, Json(u.id)).into_response(),
+        _ => (StatusCode::UNAUTHORIZED, Json("Login failed")).into_response(),
     }
 }
