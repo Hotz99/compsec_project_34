@@ -1,0 +1,14 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./frontend:/app
+
+  axum_api:
+    build: ./axum_api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./axium_api:/app
