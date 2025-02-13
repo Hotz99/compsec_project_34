@@ -83,20 +83,22 @@ pub struct SearchQuery {
 }
 
 pub async fn search_todos(
+    Path(id): Path<i64>,
     Query(params): Query<SearchQuery>,
     Extension(sqlite_pool): Extension<SqlitePool>,
 ) -> impl IntoResponse {
     // direct string interpolation to allow for sql injection
     let sql = format!(
-        "SELECT id, user_id, text, completed, created_at FROM todos WHERE text LIKE '%{}%'",
+        "SELECT id, user_id, text, completed, created_at FROM todos WHERE user_id = {} AND text LIKE '%{}%'",
+        id,
         params.query
     );
-
+    println!("sql: {}", sql);
     let todos = sqlx::query_as::<_, Todo>(&sql)
         .fetch_all(&sqlite_pool)
         .await
         .unwrap();
-
+    println!("todos: {:?}", todos);
     Json(todos)
 }
 
@@ -118,8 +120,10 @@ pub async fn create_todo(
     }
 }
 
-pub async fn get_todos(Extension(sqlite_pool): Extension<SqlitePool>) -> Json<Vec<Todo>> {
-    let todos = sqlx::query_as!(Todo, "SELECT * FROM todos")
+pub async fn get_todos(
+    Extension(sqlite_pool): Extension<SqlitePool>,  
+    Path(id): Path<i64>,) -> Json<Vec<Todo>> {
+    let todos = sqlx::query_as!(Todo, "SELECT * FROM todos WHERE user_id = ?", id)
         .fetch_all(&sqlite_pool)
         .await
         .unwrap();

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM todos",
+  "query": "SELECT * FROM todos WHERE user_id = ?",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
@@ -40,5 +40,5 @@
       false
     ]
   },
-  "hash": "9a60ae96398dc07faf7360c43ffdbae23577151585dfea78e60dc4f72a49288b"
+  "hash": "b1e3cb80855c18e62bab42545c946e7aa0435aca1aa5c667447862bbbd175430"
 }

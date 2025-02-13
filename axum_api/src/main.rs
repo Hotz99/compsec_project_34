@@ -24,15 +24,13 @@ async fn run_server() -> Result<(), sqlx::Error> {
     let app = Router::new()
         .route("/signup", post(authentication::sign_up))
         .route("/login", post(authentication::sign_in))
-        .route(
-            "/todos",
-            post(crud_ops::create_todo).get(crud_ops::get_todos),
-        )
+        .route("/todos/user/{id}", get(crud_ops::get_todos))
+        .route("/todos", post(crud_ops::create_todo))
         .route(
             "/todos/{id}",
             put(crud_ops::update_todo).delete(crud_ops::delete_todo),
         )
-        .route("/search", get(crud_ops::search_todos))
+        .route("/todos/user/{id}/search", get(crud_ops::search_todos))
         .layer(CorsLayer::new()
             .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
             .allow_origin(Any)

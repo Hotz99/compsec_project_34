@@ -42,6 +42,10 @@
         Logout
       </button>
     </div>
+    <input type="text" id="search" placeholder="Search todo" />
+    <button onclick="searchTodos()">Search</button>
+    <br />
+    <br />
     <input type="text" id="newTodo" placeholder="New todo" />
     <button onclick="addTodo()">Add</button>
     <ul id="todoList"></ul>
@@ -64,18 +68,26 @@
       // console.log(typeof user_id);
       const apiUrl = "http://localhost:3000";
 
+      console.log(user_id);
+
       async function fetchTodos() {
-        // const response = await fetch(`${apiUrl}?userId=${userId}`);
-        const response = await fetch(`${apiUrl}/todos`);
+        const response = await fetch(`${apiUrl}/todos/user/${user_id}`);
+        const todos = await response.json();
+        renderTodos(todos);
+      }
+
+      async function searchTodos() {
+        const search = document.getElementById("search").value;
+        const response = await fetch(`${apiUrl}/todos/user/${user_id}/search?query=${search}`);
         const todos = await response.json();
         renderTodos(todos);
       }
 
       function renderTodos(todos) {
+        console.log(todos);
         const list = document.getElementById("todoList");
         list.innerHTML = "";
         todos.forEach((todo) => {
-          if (todo.user_id != user_id) return;
           const li = document.createElement("li");
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
