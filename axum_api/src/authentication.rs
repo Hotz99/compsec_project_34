@@ -33,8 +33,9 @@ pub async fn sign_in(
     .await
     .unwrap();
 
+    println!("{:?}", user);
+
     match user {
-        // TODO: return userid if password matches
         Some(u) if u.password == credentials.password => (StatusCode::OK, Json(u.id)).into_response(),
         _ => (StatusCode::UNAUTHORIZED, Json("Login failed")).into_response(),
     }
