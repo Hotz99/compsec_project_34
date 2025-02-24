@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO todos (user_id, text, completed) VALUES (?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "bdc27f105ac472ccb8a000900992a6b56d2d6da79e65e6ebcb38fe591b0dbba8"
+}

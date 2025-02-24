@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM todos WHERE user_id = ? AND text LIKE ? ESCAPE '\\'",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "text",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "completed",
+        "ordinal": 3,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "069c210652fb04d5167fdf870c2a1b49b7e7f570a4f2ab273ba88cc5949bffce"
+}

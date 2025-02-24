@@ -7,18 +7,33 @@ pub struct Todo {
     pub user_id: i64,
     pub text: String,
     pub completed: bool,
-    pub created_at: chrono::NaiveDateTime,
+    pub created_at: sqlx::types::time::OffsetDateTime,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct User {
     pub id: i64,
     pub username: String,
-    pub password: String,
+    pub password_hash: String,
 }
 
-#[derive(serde::Deserialize)]
-pub struct AuthReqeust {
+impl axum_login::AuthUser for User {
+    type Id = i64;
+
+    fn id(&self) -> Self::Id {
+        self.id
+    }
+
+    // when user changes password, auth session becomes invalid
+    fn session_auth_hash(&self) -> &[u8] {
+        self.password_hash.as_bytes()
+    }
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct AuthRequest {
     pub username: String,
+    // plaintext transmitted over https
+    // hashed server-side
     pub password: String,
 }

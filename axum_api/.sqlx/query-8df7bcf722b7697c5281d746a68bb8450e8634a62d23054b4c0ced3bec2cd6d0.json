@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE todos SET text = ?, completed = ? WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "8df7bcf722b7697c5281d746a68bb8450e8634a62d23054b4c0ced3bec2cd6d0"
+}
