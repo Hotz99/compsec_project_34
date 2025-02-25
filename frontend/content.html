@@ -1,155 +1,162 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Todo App</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        max-width: 400px;
-        margin: auto;
-      }
-      ul {
-        list-style: none;
-        padding: 0;
-      }
-      li {
-        display: flex;
-        align-items: center;
-        margin: 5px 0;
-      }
-      button {
-        margin-left: auto;
-      }
-      div {
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-      }
-      .completed {
-        text-decoration: line-through;
-        color: gray;
-      }
-    </style>
-  </head>
-  <body>
-    <div>
-      <h2>Todo List</h2>
-      <button
-        onclick="document.cookie = 'userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC'; window.location.href = 'login.html';"
-      >
-        Logout
-      </button>
-    </div>
-    <input type="text" id="search" placeholder="Search todo" />
-    <button onclick="searchTodos()">Search</button>
-    <br />
-    <br />
-    <input type="text" id="newTodo" placeholder="New todo" />
-    <button onclick="addTodo()">Add</button>
-    <ul id="todoList"></ul>
 
-    <script>
-      function isValidId(str) {
-        var n = Math.floor(Number(str));
-        return n !== Infinity && String(n) === str && n >= 0;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: auto;
+    }
 
-      // Check if userId cookie is set, otherwise redirect to login page
-      const cookieExists = document.cookie.includes("userId");
-      const user_id = document.cookie.split("userId=")[1];
+    ul {
+      list-style: none;
+      padding: 0;
+    }
 
-      if (!cookieExists || !isValidId(user_id)) {
-        window.location.href = "login.html";
-      }
+    li {
+      display: flex;
+      align-items: center;
+      margin: 5px 0;
+    }
 
-      // console.log(document.cookie);
-      // console.log(typeof user_id);
-      const apiUrl = "http://localhost:3000";
+    button {
+      margin-left: auto;
+    }
 
-      async function fetchTodos() {
-        const response = await fetch(`${apiUrl}/todos/user/${user_id}`);
-        const todos = await response.json();
-       renderTodos(todos);
-      }
+    div {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
 
-      async function searchTodos() {
-        const search = document.getElementById("search").value;
-        const response = await fetch(`${apiUrl}/todos/user/${user_id}/search?query=${search}`);
-        const todos = await response.json();
-        renderTodos(todos);
-      }
+    .completed {
+      text-decoration: line-through;
+      color: gray;
+    }
+  </style>
+</head>
 
-      function renderTodos(todos) {
-        console.log(todos);
-        const list = document.getElementById("todoList");
-        list.innerHTML = "";
-        todos.forEach((todo) => {
-          const li = document.createElement("li");
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.checked = todo.completed;
-          checkbox.onchange = () => toggleTodo(todo);
+<body>
+  <div>
+    <h2>Todo List</h2>
+    <button
+      onclick="document.cookie = 'userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC'; window.location.href = 'login.html';">
+      Logout
+    </button>
+  </div>
+  <input type="text" id="search" placeholder="Search todo" />
+  <button onclick="searchTodos()">Search</button>
+  <br />
+  <br />
+  <input type="text" id="newTodo" placeholder="New todo" />
+  <button onclick="addTodo()">Add</button>
+  <ul id="todoList"></ul>
 
-          const textSpan = document.createElement("span");
-          textSpan.textContent = todo.text;
-          if (todo.completed) textSpan.classList.add("completed");
+  <script>
+    function isValidId(str) {
+      var n = Math.floor(Number(str));
+      return n !== Infinity && String(n) === str && n >= 0;
+    }
 
-          li.appendChild(checkbox);
-          li.appendChild(textSpan);
+    // Check if userId cookie is set, otherwise redirect to login page
+    const cookieExists = document.cookie.includes("userId");
+    const user_id = document.cookie.split("userId=")[1];
 
-          const delBtn = document.createElement("button");
-          delBtn.innerText = "❌";
-          delBtn.onclick = () => deleteTodo(todo);
-          li.appendChild(delBtn);
+    if (!cookieExists || !isValidId(user_id)) {
+      window.location.href = "login.html";
+    }
 
-          list.appendChild(li);
-        });
-      }
+    // console.log(document.cookie);
+    // console.log(typeof user_id);
+    const apiUrl = "http://localhost:3000";
 
-      async function addTodo() {
-        const text = document.getElementById("newTodo").value;
-        if (!text.trim()) return;
+    async function fetchTodos() {
+      const response = await fetch(`${apiUrl}/todos`);
+      const todos = await response.json();
+      renderTodos(todos);
+    }
 
-        // TODO: error handling of parsing user_id to int
-        await fetch(`${apiUrl}/todos`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: -1,
-            user_id: parseInt(user_id),
-            text: text,
-            completed: false,
-            created_at: "2021-06-01T00:00:00.000",
-          }),
-        });
+    async function searchTodos() {
+      const search = document.getElementById("search").value;
+      const response = await fetch(`${apiUrl}/todos/search?query=${search}`);
+      const todos = await response.json();
+      renderTodos(todos);
+    }
 
-        document.getElementById("newTodo").value = "";
-        fetchTodos();
-      }
+    function renderTodos(todos) {
+      console.log(todos);
+      const list = document.getElementById("todoList");
+      list.innerHTML = "";
+      todos.forEach((todo) => {
+        const li = document.createElement("li");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = todo.completed;
+        checkbox.onchange = () => toggleTodo(todo);
 
-      async function toggleTodo(todo) {
-        await fetch(`${apiUrl}/todos/${todo.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...todo,
-            completed: !todo.completed,
-          }),
-        });
-        fetchTodos();
-      }
+        const textSpan = document.createElement("span");
+        textSpan.textContent = todo.text;
+        if (todo.completed) textSpan.classList.add("completed");
 
-      async function deleteTodo(todo) {
-        if (todo.user_id !== parseInt(user_id)) {
-          return;
-        }
-        await fetch(`${apiUrl}/todos/${todo.id}`, { method: "DELETE" });
-        fetchTodos();
-      }
+        li.appendChild(checkbox);
+        li.appendChild(textSpan);
 
+        const delBtn = document.createElement("button");
+        delBtn.innerText = "❌";
+        delBtn.onclick = () => deleteTodo(todo);
+        li.appendChild(delBtn);
+
+        list.appendChild(li);
+      });
+    }
+
+    async function addTodo() {
+      const text = document.getElementById("newTodo").value;
+      if (!text.trim()) return;
+
+      // TODO: error handling of parsing user_id to int
+      await fetch(`${apiUrl}/todos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: -1,
+          user_id: parseInt(user_id),
+          text: text,
+          completed: false,
+          created_at: "2021-06-01T00:00:00.000",
+        }),
+      });
+
+      document.getElementById("newTodo").value = "";
       fetchTodos();
-    </script>
-  </body>
+    }
+
+    async function toggleTodo(todo) {
+      await fetch(`${apiUrl}/todos/${todo.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...todo,
+          completed: !todo.completed,
+        }),
+      });
+      fetchTodos();
+    }
+
+    async function deleteTodo(todo) {
+      if (todo.user_id !== parseInt(user_id)) {
+        return;
+      }
+      await fetch(`${apiUrl}/todos/${todo.id}`, { method: "DELETE" });
+      fetchTodos();
+    }
+
+    fetchTodos();
+  </script>
+</body>
+
 </html>
