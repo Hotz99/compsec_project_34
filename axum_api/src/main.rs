@@ -3,7 +3,6 @@ mod crud_ops;
 mod entities;
 
 use axum::{
-    extract::Extension,
     http::Method,
     routing::{get, post, put},
     Router,
@@ -12,6 +11,8 @@ use serde::Deserialize;
 use sqlx::sqlite::SqlitePoolOptions;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
+
+const TCP_LISTENER_ADDRESS: &str = "0.0.0.0:3000";
 
 async fn run_server() -> Result<(), sqlx::Error> {
     let sqlite_pool = SqlitePoolOptions::new()
@@ -46,16 +47,18 @@ async fn run_server() -> Result<(), sqlx::Error> {
     .build();
 
     let app = Router::new()
-        .route("/protected", get(crud_ops::protected))
-        .route("/sign_up", post(authentication::sign_up))
-        .route("/sign_in", post(authentication::sign_in))
-        .route("/todos/user", get(crud_ops::get_todos))
+        .route("/todos", get(crud_ops::get_todos))
         .route("/todos", post(crud_ops::create_todo))
         .route(
             "/todos/{todo_id}",
             put(crud_ops::update_todo).delete(crud_ops::delete_todo),
         )
-        .route("/todos/user/search", get(crud_ops::search_todos))
+        .route("/todos/search", get(crud_ops::search_todos))
+        .route_layer(axum_login::login_required!(
+            authentication::SqliteAuthBackend
+        ))
+        .route("/sign_up", post(authentication::sign_up))
+        .route("/sign_in", post(authentication::sign_in))
         .layer(
             CorsLayer::new()
                 .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
@@ -65,9 +68,11 @@ async fn run_server() -> Result<(), sqlx::Error> {
         .layer(TraceLayer::new_for_http())
         .layer(auth_layer);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind(TCP_LISTENER_ADDRESS)
+        .await
+        .unwrap();
 
-    println!("listening on {}", listener.local_addr().unwrap());
+    println!("listening on {}", TCP_LISTENER_ADDRESS);
     axum::serve(listener, app).await.unwrap();
 
     if let Err(e) = expired_deletion_task.await {
@@ -78,41 +83,8 @@ async fn run_server() -> Result<(), sqlx::Error> {
 }
 
 #[tokio::test]
-async fn test_protected_endpoint() {
-    tokio::spawn(async {
-        if let Err(e) = run_server().await {
-            eprintln!("run server error: {:?}", e);
-        };
-    });
-
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-
-    let client = reqwest::Client::new();
-
-    let response = client
-        .get("http://localhost:3000/protected")
-        .send()
-        .await
-        .unwrap();
-
-    assert_eq!(response.status(), 401);
-
-    let response = client
-        .post("http://localhost:3000/sign_in")
-        .json(&entities::AuthRequest {
-            username: "user1".into(),
-            password: "password1".into(),
-        })
-        .send()
-        .await
-        .unwrap();
-
-    assert_eq!(response.status(), 200);
-}
-
-#[tokio::test]
 async fn test_security() {
-    tokio::spawn(async {
+    let server_thread_handle = tokio::spawn(async {
         if let Err(e) = run_server().await {
             eprintln!("run server error: {:?}", e);
         };
@@ -122,6 +94,26 @@ async fn test_security() {
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let client = reqwest::Client::new();
+
+    let response = client
+        .get("http://localhost:3000/todos")
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 401);
+
+    let response = client
+        .post("http://localhost:3000/sign_in")
+        .json(&authentication::Credentials {
+            username: "user1".to_string(),
+            password: "password1".to_string(),
+        })
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
 
     // sql injection: tautology attack
     let response = client
@@ -146,10 +138,9 @@ async fn test_security() {
     // cryptographic failures: plaintext password storage
     let response = client
         .post("http://localhost:3000/sign_in")
-        .json(&entities::User {
-            id: 0,
-            username: "admin".into(),
-            password_hash: "admin".into(),
+        .json(&authentication::Credentials {
+            username: "admin".to_string(),
+            password: "admin".to_string(),
         })
         .send()
         .await
@@ -161,16 +152,17 @@ async fn test_security() {
     for _ in 0..10 {
         let response = client
             .post("http://localhost:3000/sign_in")
-            .json(&entities::User {
-                id: 0,
-                username: "admin".into(),
-                password_hash: "wrong".into(),
+            .json(&authentication::Credentials {
+                username: "admin".to_string(),
+                password: "wrong".to_string(),
             })
             .send()
             .await
             .unwrap();
         assert_ne!(response.status(), 429);
     }
+
+    server_thread_handle.abort();
 }
 
 #[tokio::main]

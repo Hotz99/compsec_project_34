@@ -2,12 +2,10 @@ use crate::{authentication, entities::Todo};
 use axum::{
     extract::{Extension, Path, Query},
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     Json,
 };
 use sqlx::sqlite::SqlitePool;
-
-const USER_ID_KEY: &str = "user_id";
 
 // populate db with admin user, user1, user2 and some todos for each
 pub async fn seed_data(sqlite_pool: &SqlitePool) {
@@ -21,11 +19,13 @@ pub async fn seed_data(sqlite_pool: &SqlitePool) {
         .await
         .unwrap();
 
+    let mut password_hash = password_auth::generate_hash("admin");
+
     // create admin user with associated todo items
     let admin_id: i64 = sqlx::query!(
         "INSERT INTO users (username, password_hash) VALUES (?, ?) RETURNING id",
         "admin",
-        "admin"
+        password_hash
     )
     .fetch_one(sqlite_pool)
     .await
@@ -42,7 +42,7 @@ pub async fn seed_data(sqlite_pool: &SqlitePool) {
     .await
     .unwrap();
 
-    let mut password_hash = password_auth::generate_hash("password1");
+    password_hash = password_auth::generate_hash("password1");
 
     // create user1 and user2 with associated todo items
     let user1_id: i64 = sqlx::query!(
@@ -82,14 +82,6 @@ pub async fn seed_data(sqlite_pool: &SqlitePool) {
     ).execute(sqlite_pool).await.unwrap();
 }
 
-pub async fn protected(auth_session: authentication::AuthSession) -> impl IntoResponse {
-    match auth_session.user {
-        Some(user) => format!("protected data here for user {}", user.username).into_response(),
-
-        None => StatusCode::UNAUTHORIZED.into_response(),
-    }
-}
-
 use crate::Deserialize;
 #[derive(Deserialize)]
 pub struct SearchQuery {
@@ -99,10 +91,10 @@ pub struct SearchQuery {
 pub async fn search_todos(
     Query(params): Query<SearchQuery>,
     Extension(sqlite_pool): Extension<SqlitePool>,
-    session: tower_sessions::Session,
+    auth_session: authentication::AuthSession,
 ) -> impl IntoResponse {
-    let user_id = match session.get::<i64>(USER_ID_KEY).await.unwrap_or(None) {
-        Some(id) => id,
+    let user_id = match auth_session.user {
+        Some(user) => user.id,
         None => return StatusCode::UNAUTHORIZED.into_response(),
     };
 
@@ -120,16 +112,11 @@ pub async fn search_todos(
 }
 
 pub async fn create_todo(
-    session: tower_sessions::Session,
-    Extension(sqlite_pool): Extension<sqlx::SqlitePool>,
+    auth_session: authentication::AuthSession,
     Json(todo): Json<Todo>,
 ) -> impl IntoResponse {
-    println!("created todo handler:");
-
-    dbg!(&session);
-
-    let user_id = match session.get::<i64>(USER_ID_KEY).await.unwrap_or(None) {
-        Some(id) => id,
+    let user_id = match auth_session.user {
+        Some(user) => user.id,
         None => return StatusCode::UNAUTHORIZED.into_response(),
     };
 
@@ -139,7 +126,7 @@ pub async fn create_todo(
         todo.text,
         todo.completed
     )
-    .execute(&sqlite_pool)
+    .execute(&auth_session.backend.sqlite_pool)
     .await
     {
         Ok(_) => StatusCode::CREATED.into_response(),
@@ -147,32 +134,26 @@ pub async fn create_todo(
     }
 }
 
-pub async fn get_todos(
-    Extension(sqlite_pool): Extension<SqlitePool>,
-    session: tower_sessions::Session,
-) -> Response {
-    dbg!(&session);
-
-    let user_id = match session.get::<i64>(USER_ID_KEY).await.unwrap_or(None) {
-        Some(id) => id,
+pub async fn get_todos(auth_session: authentication::AuthSession) -> impl IntoResponse {
+    let user_id = match auth_session.user {
+        Some(user) => user.id,
         None => return StatusCode::UNAUTHORIZED.into_response(),
     };
 
     let todos = sqlx::query_as!(Todo, "SELECT * FROM todos WHERE user_id = ?", user_id)
-        .fetch_all(&sqlite_pool)
+        .fetch_all(&auth_session.backend.sqlite_pool)
         .await
         .unwrap();
     Json(todos).into_response()
 }
 
 pub async fn update_todo(
+    auth_session: authentication::AuthSession,
     Path(todo_id): Path<i64>,
-    Extension(sqlite_pool): Extension<SqlitePool>,
-    session: tower_sessions::Session,
     Json(todo): Json<Todo>,
-) -> Response {
-    let user_id = match session.get::<i64>(USER_ID_KEY).await.unwrap_or(None) {
-        Some(id) => id,
+) -> impl IntoResponse {
+    let user_id = match auth_session.user {
+        Some(user) => user.id,
         None => return StatusCode::UNAUTHORIZED.into_response(),
     };
 
@@ -183,7 +164,7 @@ pub async fn update_todo(
         todo_id,
         user_id
     )
-    .execute(&sqlite_pool)
+    .execute(&auth_session.backend.sqlite_pool)
     .await
     .unwrap();
 
@@ -195,12 +176,11 @@ pub async fn update_todo(
 }
 
 pub async fn delete_todo(
+    auth_session: authentication::AuthSession,
     Path(id): Path<i64>,
-    Extension(sqlite_pool): Extension<SqlitePool>,
-    session: tower_sessions::Session,
 ) -> impl IntoResponse {
-    let user_id = match session.get::<i64>(USER_ID_KEY).await.unwrap_or(None) {
-        Some(id) => id,
+    let user_id = match auth_session.user {
+        Some(user) => user.id,
         None => return StatusCode::UNAUTHORIZED.into_response(),
     };
 
@@ -209,7 +189,7 @@ pub async fn delete_todo(
         id,
         user_id
     )
-    .execute(&sqlite_pool)
+    .execute(&auth_session.backend.sqlite_pool)
     .await
     .unwrap();
 

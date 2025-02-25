@@ -29,11 +29,3 @@ impl axum_login::AuthUser for User {
         self.password_hash.as_bytes()
     }
 }
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct AuthRequest {
-    pub username: String,
-    // plaintext transmitted over https
-    // hashed server-side
-    pub password: String,
-}

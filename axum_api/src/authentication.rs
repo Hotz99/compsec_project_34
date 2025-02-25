@@ -1,13 +1,13 @@
-use crate::entities::{AuthRequest, User};
 use axum::{extract::Extension, http::StatusCode, response::IntoResponse, Json};
 
 pub type AuthSession = axum_login::AuthSession<SqliteAuthBackend>;
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Credentials {
     pub username: String,
+    // plaintext transmitted over https
+    // hashed server-side
     pub password: String,
-    pub next: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -38,18 +38,19 @@ impl axum_login::AuthnBackend for SqliteAuthBackend {
 
     async fn authenticate(
         &self,
-        creds: Self::Credentials,
+        claim_credentials: Self::Credentials,
     ) -> Result<Option<Self::User>, Self::Error> {
         let user: Option<Self::User> = sqlx::query_as("select * from users where username = ? ")
-            .bind(creds.username)
+            .bind(claim_credentials.username)
             .fetch_optional(&self.sqlite_pool)
             .await?;
 
         // `password_auth::verify_password()` is blocking, hence using `tokio::task::spawn_blocking()`
         tokio::task::spawn_blocking(|| {
-            // compares form input with argon2 password hash
+            // compares identity claim password with argon2 password hash
             Ok(user.filter(|user| {
-                password_auth::verify_password(creds.password, &user.password_hash).is_ok()
+                password_auth::verify_password(claim_credentials.password, &user.password_hash)
+                    .is_ok()
             }))
         })
         .await?
@@ -70,12 +71,12 @@ impl axum_login::AuthnBackend for SqliteAuthBackend {
 
 pub async fn sign_up(
     Extension(sqlite_pool): Extension<sqlx::SqlitePool>,
-    Json(auth_request): Json<AuthRequest>,
-) -> StatusCode {
+    Json(credentials): Json<self::Credentials>,
+) -> impl IntoResponse {
     match sqlx::query!(
         "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-        auth_request.username,
-        auth_request.password
+        credentials.username,
+        credentials.password
     )
     .execute(&sqlite_pool)
     .await
@@ -88,22 +89,22 @@ pub async fn sign_up(
 
 pub async fn sign_in(
     auth_session: crate::authentication::AuthSession,
-    Json(auth_request): Json<crate::entities::AuthRequest>,
+    Json(credentials): Json<self::Credentials>,
 ) -> impl IntoResponse {
     let user = sqlx::query_as!(
         crate::entities::User,
         "SELECT * FROM users WHERE username = ?",
-        auth_request.username
+        credentials.username
     )
     .fetch_optional(&auth_session.backend.sqlite_pool)
     .await
     .unwrap();
 
     match user {
-        Some(u) => match password_auth::verify_password(auth_request.password, &u.password_hash) {
-            Ok(_) => (StatusCode::OK, Json(u.id)).into_response(),
-            Err(_) => (StatusCode::UNAUTHORIZED, Json("Invalid password")).into_response(),
+        Some(u) => match password_auth::verify_password(credentials.password, &u.password_hash) {
+            Ok(_) => (StatusCode::OK, u.id.to_string()).into_response(),
+            Err(_) => (StatusCode::UNAUTHORIZED, "Invalid password").into_response(),
         },
-        None => (StatusCode::UNAUTHORIZED, Json("User not found")).into_response(),
+        None => (StatusCode::UNAUTHORIZED, "User not found").into_response(),
     }
 }
