@@ -1,4 +1,4 @@
-use axum::{extract::Extension, http::StatusCode, response::IntoResponse, Json};
+use axum::{extract::Extension, http::StatusCode, response::{IntoResponse, Redirect}, Json};
 
 pub type AuthSession = axum_login::AuthSession<SqliteAuthBackend>;
 
@@ -111,4 +111,12 @@ pub async fn sign_in(
     } else {
         return StatusCode::OK.into_response();
     }
+}
+
+pub async fn sign_out(
+    mut auth_session: crate::authentication::AuthSession,
+) -> impl IntoResponse {
+    let logout = auth_session.logout();
+    let _ = logout.await;
+    Redirect::temporary("/") // Redirects the user to the homepage or login page
 }

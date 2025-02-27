@@ -59,6 +59,7 @@ async fn run_server() -> Result<(), sqlx::Error> {
         ))
         .route("/sign_up", post(authentication::sign_up))
         .route("/sign_in", post(authentication::sign_in))
+        .route("/sign_out", post(authentication::sign_out))
         .layer(
             CorsLayer::new()
                 .allow_origin(

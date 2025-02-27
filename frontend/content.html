@@ -43,7 +43,7 @@
     <div>
       <h2>Todo List</h2>
       <button
-        onclick="document.cookie = 'userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC'; window.location.href = 'login.html';"
+        onclick="logout(); document.cookie = 'logedIn=0; expires=Thu, 01 Jan 1970 00:00:00 UTC'; window.location.href = 'login.html';"
       >
         Logout
       </button>
@@ -58,6 +58,16 @@
 
     <script>
       const apiUrl = "http://localhost:3000";
+
+      // Check if userId cookie is set, otherwise redirect to login page
+      const cookieExists = document.cookie.includes("logedIn");
+      const isLoggedIn = document.cookie.split("logedIn=")[1];
+
+      console.log(isLoggedIn);
+
+      if (!cookieExists || isLoggedIn !== "1") {
+        window.location.href = "login.html";
+      }
 
       async function fetchTodos() {
         console.log("fetching todos");
@@ -111,6 +121,14 @@
 
           list.appendChild(li);
         });
+      }
+
+      async function logout() {
+        await fetch(`${apiUrl}/sign_out`, {
+          method: "POST",
+          credentials: "include",
+        });
+        // window.location.href = "login.html";
       }
 
       async function addTodo() {

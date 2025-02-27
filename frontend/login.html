@@ -56,6 +56,7 @@
           // not possible to read the cookie from the response
           // since `HttpOnly` flag of the `Set-Cookie` header is set
           // console.log("received cookie with session id: ", document.cookie);
+          document.cookie = `logedIn=1;`;
           window.location.href = "content.html";
         } else {
           alert("Invalid username or password.");
