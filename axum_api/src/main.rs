@@ -2,10 +2,9 @@ mod authentication;
 mod crud_ops;
 mod entities;
 
+
 use axum::{
-    http::Method,
-    routing::{get, post, put},
-    Router,
+    http::Method, routing::{get, post, put}, Extension, Router
 };
 use serde::Deserialize;
 use sqlx::sqlite::SqlitePoolOptions;
@@ -42,7 +41,7 @@ async fn run_server() -> Result<(), sqlx::Error> {
         .with_signed(cookie_signing_key);
 
     let auth_layer = axum_login::AuthManagerLayerBuilder::new(
-        authentication::SqliteAuthBackend::new(sqlite_pool),
+        authentication::SqliteAuthBackend::new(sqlite_pool.clone()),
         session_layer,
     )
     .build();
@@ -73,7 +72,8 @@ async fn run_server() -> Result<(), sqlx::Error> {
                 .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE]),
         )
         .layer(TraceLayer::new_for_http())
-        .layer(auth_layer);
+        .layer(auth_layer)
+        .layer(Extension(sqlite_pool));
 
     let listener = tokio::net::TcpListener::bind(TCP_LISTENER_ADDRESS)
         .await

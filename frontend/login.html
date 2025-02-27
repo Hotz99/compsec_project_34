@@ -1,68 +1,66 @@
 <!doctype html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Todo App</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 400px;
-      margin: auto;
-    }
-
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    li {
-      display: flex;
-      align-items: center;
-      margin: 5px 0;
-    }
-
-    button {
-      margin-left: auto;
-    }
-  </style>
-</head>
-
-<body>
-  <h2>Login</h2>
-  <input type="username" id="username" placeholder="Username" />
-  <input type="password" id="password" placeholder="Password" />
-
-  <button onclick="login()">Login</button>
-  <a href="register.html">Register</a>
-
-  <script>
-    const apiUrl = "http://localhost:3000";
-
-    async function login() {
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-
-      const response = await fetch(`${apiUrl}/sign_in`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({username, password}),
-      });
-
-      if (response.ok) {
-        // not possible to read the cookie from the response
-        // since `HttpOnly` flag of the `Set-Cookie` header is set
-        // console.log("received cookie with session id: ", document.cookie);
-        window.location.href = "content.html";
-      } else {
-        alert("Invalid username or password.");
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Todo App</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 400px;
+        margin: auto;
       }
-    }
-  </script>
-</body>
 
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      li {
+        display: flex;
+        align-items: center;
+        margin: 5px 0;
+      }
+
+      button {
+        margin-left: auto;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2>Login</h2>
+    <input type="username" id="username" placeholder="Username" />
+    <input type="password" id="password" placeholder="Password" />
+
+    <button onclick="login()">Login</button>
+    <a href="register.html">Register</a>
+
+    <script>
+      const apiUrl = "http://localhost:3000";
+
+      async function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        const response = await fetch(`${apiUrl}/sign_in`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ username, password }),
+        });
+
+        if (response.ok) {
+          // not possible to read the cookie from the response
+          // since `HttpOnly` flag of the `Set-Cookie` header is set
+          // console.log("received cookie with session id: ", document.cookie);
+          window.location.href = "content.html";
+        } else {
+          alert("Invalid username or password.");
+        }
+      }
+    </script>
+  </body>
 </html>

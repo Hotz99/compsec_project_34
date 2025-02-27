@@ -73,10 +73,13 @@ pub async fn sign_up(
     Extension(sqlite_pool): Extension<sqlx::SqlitePool>,
     Json(credentials): Json<self::Credentials>,
 ) -> impl IntoResponse {
+    let credentials = credentials.clone();
+    // hash password
+    let password_hash = password_auth::generate_hash(&credentials.password);
     match sqlx::query!(
         "INSERT INTO users (username, password_hash) VALUES (?, ?)",
         credentials.username,
-        credentials.password
+        password_hash,
     )
     .execute(&sqlite_pool)
     .await

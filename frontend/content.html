@@ -1,157 +1,159 @@
 <!doctype html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Todo App</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 400px;
-      margin: auto;
-    }
-
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    li {
-      display: flex;
-      align-items: center;
-      margin: 5px 0;
-    }
-
-    button {
-      margin-left: auto;
-    }
-
-    div {
-      display: flex;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-
-    .completed {
-      text-decoration: line-through;
-      color: gray;
-    }
-  </style>
-</head>
-
-<body>
-  <div>
-    <h2>Todo List</h2>
-    <button
-      onclick="document.cookie = 'userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC'; window.location.href = 'login.html';">
-      Logout
-    </button>
-  </div>
-  <input type="text" id="search" placeholder="Search todo" />
-  <button onclick="searchTodos()">Search</button>
-  <br />
-  <br />
-  <input type="text" id="newTodo" placeholder="New todo" />
-  <button onclick="addTodo()">Add</button>
-  <ul id="todoList"></ul>
-
-  <script>
-    const apiUrl = "http://localhost:3000";
-
-    async function fetchTodos() {
-      console.log("fetching todos");
-      const response = await fetch(`${apiUrl}/todos`, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        console.error("failed to fetch todos:");
-        console.log(response);
-        return;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Todo App</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 400px;
+        margin: auto;
       }
 
-      const todos = await response.json();
-      renderTodos(todos);
-    }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
 
-    // we receive all todos from the server 
-    // server side search does not make sense
-    async function searchTodos() {
-      const search = document.getElementById("search").value;
-      // const response = await fetch(`${apiUrl}/todos/search?query=${search}`, {
-      //  credentials: "include",
-      // });
-      // const todos = await response.json();
-      renderTodos(todos);
-    }
+      li {
+        display: flex;
+        align-items: center;
+        margin: 5px 0;
+      }
 
-    function renderTodos(todos) {
-      console.log(todos);
-      const list = document.getElementById("todoList");
-      list.innerHTML = "";
-      todos.forEach((todo) => {
-        const li = document.createElement("li");
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = todo.completed;
-        checkbox.onchange = () => toggleTodo(todo);
+      button {
+        margin-left: auto;
+      }
 
-        const textSpan = document.createElement("span");
-        textSpan.textContent = todo.text;
-        if (todo.completed) textSpan.classList.add("completed");
+      div {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
 
-        li.appendChild(checkbox);
-        li.appendChild(textSpan);
+      .completed {
+        text-decoration: line-through;
+        color: gray;
+      }
+    </style>
+  </head>
 
-        const delBtn = document.createElement("button");
-        delBtn.innerText = "❌";
-        delBtn.onclick = () => deleteTodo(todo);
-        li.appendChild(delBtn);
+  <body>
+    <div>
+      <h2>Todo List</h2>
+      <button
+        onclick="document.cookie = 'userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC'; window.location.href = 'login.html';"
+      >
+        Logout
+      </button>
+    </div>
+    <input type="text" id="search" placeholder="Search todo" />
+    <button onclick="searchTodos()">Search</button>
+    <br />
+    <br />
+    <input type="text" id="newTodo" placeholder="New todo" />
+    <button onclick="addTodo()">Add</button>
+    <ul id="todoList"></ul>
 
-        list.appendChild(li);
-      });
-    }
+    <script>
+      const apiUrl = "http://localhost:3000";
 
-    async function addTodo() {
-      const todoText = document.getElementById("newTodo").value;
-      if (!todoText.trim()) return;
+      async function fetchTodos() {
+        console.log("fetching todos");
+        const response = await fetch(`${apiUrl}/todos`, {
+          credentials: "include",
+        });
 
-      await fetch(`${apiUrl}/todos`, {
-        method: "POST",
-        credentials: "include",
-        headers: {"Content-Type": "application/json"},
-        body: todoText,
-      });
+        if (!response.ok) {
+          console.error("failed to fetch todos:");
+          console.log(response);
+          return;
+        }
 
-      document.getElementById("newTodo").value = "";
+        const todos = await response.json();
+        renderTodos(todos);
+      }
+
+      // we receive all todos from the server
+      // server side search does not make sense
+      async function searchTodos() {
+        const search = document.getElementById("search").value;
+        const response = await fetch(`${apiUrl}/todos/search?query=${search}`, {
+          credentials: "include",
+        });
+        const todos = await response.json();
+        renderTodos(todos);
+      }
+
+      function renderTodos(todos) {
+        console.log(todos);
+        const list = document.getElementById("todoList");
+        list.innerHTML = "";
+        todos.forEach((todo) => {
+          const li = document.createElement("li");
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = todo.completed;
+          checkbox.onchange = () => toggleTodo(todo);
+
+          const textSpan = document.createElement("span");
+          textSpan.textContent = todo.text;
+          if (todo.completed) textSpan.classList.add("completed");
+
+          li.appendChild(checkbox);
+          li.appendChild(textSpan);
+
+          const delBtn = document.createElement("button");
+          delBtn.innerText = "❌";
+          delBtn.onclick = () => deleteTodo(todo);
+          li.appendChild(delBtn);
+
+          list.appendChild(li);
+        });
+      }
+
+      async function addTodo() {
+        const todoText = document.getElementById("newTodo").value;
+        if (!todoText.trim()) return;
+
+        await fetch(`${apiUrl}/todos`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: todoText,
+        });
+
+        document.getElementById("newTodo").value = "";
+        fetchTodos();
+      }
+
+      async function toggleTodo(todo) {
+        await fetch(`${apiUrl}/todos/${todo.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            ...todo,
+            completed: !todo.completed,
+          }),
+        });
+        fetchTodos();
+      }
+
+      async function deleteTodo(todo) {
+        // no longer needed, ownership is checked server side
+        // if (todo.user_id !== parseInt(user_id)) {
+        //  return;
+        // }
+        await fetch(`${apiUrl}/todos/${todo.id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        fetchTodos();
+      }
+
       fetchTodos();
-    }
-
-    async function toggleTodo(todo) {
-      await fetch(`${apiUrl}/todos/${todo.id}`, {
-        method: "PUT",
-        headers: {"Content-Type": "application/json"},
-        credentials: "include",
-        body: JSON.stringify({
-          ...todo,
-          completed: !todo.completed,
-        }),
-      });
-      fetchTodos();
-    }
-
-    async function deleteTodo(todo) {
-      // no longer needed, ownership is checked server side
-      // if (todo.user_id !== parseInt(user_id)) {
-      //  return;
-      // }
-    await fetch(`${apiUrl}/todos/${todo.id}`, {method: "DELETE", credentials: "include"});
-      fetchTodos();
-    }
-
-    fetchTodos();
-  </script>
-</body>
-
+    </script>
+  </body>
 </html>
