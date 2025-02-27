@@ -57,33 +57,32 @@
   <ul id="todoList"></ul>
 
   <script>
-    function isValidId(str) {
-      var n = Math.floor(Number(str));
-      return n !== Infinity && String(n) === str && n >= 0;
-    }
-
-    // Check if userId cookie is set, otherwise redirect to login page
-    const cookieExists = document.cookie.includes("userId");
-    const user_id = document.cookie.split("userId=")[1];
-
-    if (!cookieExists || !isValidId(user_id)) {
-      window.location.href = "login.html";
-    }
-
-    // console.log(document.cookie);
-    // console.log(typeof user_id);
     const apiUrl = "http://localhost:3000";
 
     async function fetchTodos() {
-      const response = await fetch(`${apiUrl}/todos`);
+      console.log("fetching todos");
+      const response = await fetch(`${apiUrl}/todos`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        console.error("failed to fetch todos:");
+        console.log(response);
+        return;
+      }
+
       const todos = await response.json();
       renderTodos(todos);
     }
 
+    // we receive all todos from the server 
+    // server side search does not make sense
     async function searchTodos() {
       const search = document.getElementById("search").value;
-      const response = await fetch(`${apiUrl}/todos/search?query=${search}`);
-      const todos = await response.json();
+      // const response = await fetch(`${apiUrl}/todos/search?query=${search}`, {
+      //  credentials: "include",
+      // });
+      // const todos = await response.json();
       renderTodos(todos);
     }
 
@@ -115,20 +114,14 @@
     }
 
     async function addTodo() {
-      const text = document.getElementById("newTodo").value;
-      if (!text.trim()) return;
+      const todoText = document.getElementById("newTodo").value;
+      if (!todoText.trim()) return;
 
-      // TODO: error handling of parsing user_id to int
       await fetch(`${apiUrl}/todos`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: -1,
-          user_id: parseInt(user_id),
-          text: text,
-          completed: false,
-          created_at: "2021-06-01T00:00:00.000",
-        }),
+        credentials: "include",
+        headers: {"Content-Type": "application/json"},
+        body: todoText,
       });
 
       document.getElementById("newTodo").value = "";
@@ -138,7 +131,8 @@
     async function toggleTodo(todo) {
       await fetch(`${apiUrl}/todos/${todo.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {"Content-Type": "application/json"},
+        credentials: "include",
         body: JSON.stringify({
           ...todo,
           completed: !todo.completed,
@@ -148,10 +142,11 @@
     }
 
     async function deleteTodo(todo) {
-      if (todo.user_id !== parseInt(user_id)) {
-        return;
-      }
-      await fetch(`${apiUrl}/todos/${todo.id}`, { method: "DELETE" });
+      // no longer needed, ownership is checked server side
+      // if (todo.user_id !== parseInt(user_id)) {
+      //  return;
+      // }
+    await fetch(`${apiUrl}/todos/${todo.id}`, {method: "DELETE", credentials: "include"});
       fetchTodos();
     }
 

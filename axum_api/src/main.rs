@@ -9,10 +9,11 @@ use axum::{
 };
 use serde::Deserialize;
 use sqlx::sqlite::SqlitePoolOptions;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 const TCP_LISTENER_ADDRESS: &str = "0.0.0.0:3000";
+const FRONTEND_SERVER_ORIGIN: &str = "http://localhost:5000";
 
 async fn run_server() -> Result<(), sqlx::Error> {
     let sqlite_pool = SqlitePoolOptions::new()
@@ -22,7 +23,7 @@ async fn run_server() -> Result<(), sqlx::Error> {
     crud_ops::seed_data(&sqlite_pool).await;
 
     let session_store = tower_sessions_sqlx_store::SqliteStore::new(sqlite_pool.clone());
-    session_store.migrate().await?;
+    // session_store.migrate().await?;
 
     use tower_sessions::ExpiredDeletion;
     let expired_deletion_task = tokio::task::spawn(
@@ -61,9 +62,15 @@ async fn run_server() -> Result<(), sqlx::Error> {
         .route("/sign_in", post(authentication::sign_in))
         .layer(
             CorsLayer::new()
-                .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-                .allow_origin(Any)
-                .allow_headers(Any),
+                .allow_origin(
+                    FRONTEND_SERVER_ORIGIN
+                        .parse::<axum::http::HeaderValue>()
+                        .expect("failed to parse origin"),
+                )
+                .allow_headers([axum::http::header::CONTENT_TYPE])
+                // allow including credentials like cookies in http request/response
+                .allow_credentials(true)
+                .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE]),
         )
         .layer(TraceLayer::new_for_http())
         .layer(auth_layer);

@@ -46,25 +46,20 @@
 
       const response = await fetch(`${apiUrl}/sign_in`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({username, password}),
       });
 
-      // login method should return user id if successful.
-      // the user id should be stored as a plain text cookie.
-
       if (response.ok) {
-        const msg = await response.json();
-        console.log(msg);
-        // Store the user ID in a cookie
-        document.cookie = `userId=${msg}`;
-        console.log("Logged in as", document.cookie);
-        // Redirect to the content page
+        // not possible to read the cookie from the response
+        // since `HttpOnly` flag of the `Set-Cookie` header is set
+        // console.log("received cookie with session id: ", document.cookie);
         window.location.href = "content.html";
       } else {
-        alert("Invalid username or password");
+        alert("Invalid username or password.");
       }
     }
   </script>

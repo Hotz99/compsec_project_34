@@ -113,7 +113,7 @@ pub async fn search_todos(
 
 pub async fn create_todo(
     auth_session: authentication::AuthSession,
-    Json(todo): Json<Todo>,
+    todo_text: String,
 ) -> impl IntoResponse {
     let user_id = match auth_session.user {
         Some(user) => user.id,
@@ -123,8 +123,8 @@ pub async fn create_todo(
     match sqlx::query!(
         "INSERT INTO todos (user_id, text, completed) VALUES (?, ?, ?)",
         user_id,
-        todo.text,
-        todo.completed
+        todo_text,
+        false
     )
     .execute(&auth_session.backend.sqlite_pool)
     .await

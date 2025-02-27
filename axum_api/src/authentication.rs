@@ -88,23 +88,24 @@ pub async fn sign_up(
 }
 
 pub async fn sign_in(
-    auth_session: crate::authentication::AuthSession,
+    mut auth_session: crate::authentication::AuthSession,
     Json(credentials): Json<self::Credentials>,
 ) -> impl IntoResponse {
-    let user = sqlx::query_as!(
-        crate::entities::User,
-        "SELECT * FROM users WHERE username = ?",
-        credentials.username
-    )
-    .fetch_optional(&auth_session.backend.sqlite_pool)
-    .await
-    .unwrap();
+    let user = match auth_session.authenticate(credentials.clone()).await {
+        Ok(Some(user)) => user,
+        Ok(None) => return (StatusCode::UNAUTHORIZED, Json("Invalid credentials")).into_response(),
+        Err(_) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("AuthSession failed to verify credentials"),
+            )
+                .into_response()
+        }
+    };
 
-    match user {
-        Some(u) => match password_auth::verify_password(credentials.password, &u.password_hash) {
-            Ok(_) => (StatusCode::OK, u.id.to_string()).into_response(),
-            Err(_) => (StatusCode::UNAUTHORIZED, "Invalid password").into_response(),
-        },
-        None => (StatusCode::UNAUTHORIZED, "User not found").into_response(),
+    if auth_session.login(&user).await.is_err() {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    } else {
+        return StatusCode::OK.into_response();
     }
 }
