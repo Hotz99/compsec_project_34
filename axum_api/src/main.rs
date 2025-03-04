@@ -2,9 +2,10 @@ mod authentication;
 mod crud_ops;
 mod entities;
 
-
 use axum::{
-    http::Method, routing::{get, post, put}, Extension, Router
+    http::Method,
+    routing::{get, post, put},
+    Extension, Router,
 };
 use serde::Deserialize;
 use sqlx::sqlite::SqlitePoolOptions;
@@ -22,7 +23,7 @@ async fn run_server() -> Result<(), sqlx::Error> {
     crud_ops::seed_data(&sqlite_pool).await;
 
     let session_store = tower_sessions_sqlx_store::SqliteStore::new(sqlite_pool.clone());
-    // session_store.migrate().await?;
+    session_store.migrate().await?;
 
     use tower_sessions::ExpiredDeletion;
     let expired_deletion_task = tokio::task::spawn(
@@ -144,6 +145,7 @@ async fn test_security() {
     assert_eq!(response.status(), 401);
 
     // cryptographic failures: plaintext password storage
+    // remidiation: password hashes are generated server side and persisted
     let response = client
         .post("http://localhost:3000/sign_in")
         .json(&authentication::Credentials {
@@ -167,7 +169,12 @@ async fn test_security() {
             .send()
             .await
             .unwrap();
-        assert_ne!(response.status(), 429);
+
+        // rate limiting is implemented in the nginx server, not the axum server
+        // hence this test case is not reasonable, since it hits the axum endpoint
+        // without being intercepted by nginx
+        // purely for report examples
+        assert_eq!(response.status(), 429);
     }
 
     server_thread_handle.abort();

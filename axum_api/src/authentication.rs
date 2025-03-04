@@ -1,4 +1,8 @@
-use axum::{extract::Extension, http::StatusCode, response::{IntoResponse, Redirect}, Json};
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Redirect},
+    Json,
+};
 
 pub type AuthSession = axum_login::AuthSession<SqliteAuthBackend>;
 
@@ -70,23 +74,21 @@ impl axum_login::AuthnBackend for SqliteAuthBackend {
 }
 
 pub async fn sign_up(
-    Extension(sqlite_pool): Extension<sqlx::SqlitePool>,
+    auth_session: self::AuthSession,
     Json(credentials): Json<self::Credentials>,
 ) -> impl IntoResponse {
-    let credentials = credentials.clone();
-    // hash password
-    let password_hash = password_auth::generate_hash(&credentials.password);
+    let password_hash = password_auth::generate_hash(credentials.password);
+
     match sqlx::query!(
         "INSERT INTO users (username, password_hash) VALUES (?, ?)",
         credentials.username,
-        password_hash,
+        password_hash
     )
-    .execute(&sqlite_pool)
+    .execute(&auth_session.backend.sqlite_pool)
     .await
     {
-        // TODO: Either the frontend should redirect to sign in or we should return a token/cookie
-        Ok(_) => StatusCode::CREATED,
-        Err(_) => StatusCode::CONFLICT,
+        Ok(_) => StatusCode::CREATED.into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
 }
 
@@ -94,29 +96,31 @@ pub async fn sign_in(
     mut auth_session: crate::authentication::AuthSession,
     Json(credentials): Json<self::Credentials>,
 ) -> impl IntoResponse {
-    let user = match auth_session.authenticate(credentials.clone()).await {
+    let user = match auth_session.authenticate(credentials).await {
         Ok(Some(user)) => user,
-        Ok(None) => return (StatusCode::UNAUTHORIZED, Json("Invalid credentials")).into_response(),
+        Ok(None) => return (StatusCode::UNAUTHORIZED, "Invalid credentials").into_response(),
         Err(_) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json("AuthSession failed to verify credentials"),
+                "AuthSession failed to verify credentials",
             )
                 .into_response()
         }
     };
 
-    if auth_session.login(&user).await.is_err() {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    } else {
-        return StatusCode::OK.into_response();
+    if let Err(e) = auth_session.login(&user).await {
+        return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response();
     }
+
+    StatusCode::OK.into_response()
 }
 
-pub async fn sign_out(
-    mut auth_session: crate::authentication::AuthSession,
-) -> impl IntoResponse {
-    let logout = auth_session.logout();
-    let _ = logout.await;
-    Redirect::temporary("/") // Redirects the user to the homepage or login page
+pub async fn sign_out(mut auth_session: crate::authentication::AuthSession) -> impl IntoResponse {
+    if let Err(e) = auth_session.logout().await {
+        println!("sign_out error: {:?}", e);
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
+
+    // redirects the user to the homepage or login page
+    Redirect::temporary("/").into_response()
 }
