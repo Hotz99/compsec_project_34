@@ -35,7 +35,8 @@ async fn run_server() -> Result<(), sqlx::Error> {
     let cookie_signing_key = tower_sessions::cookie::Key::generate();
 
     let session_layer = tower_sessions::SessionManagerLayer::new(session_store)
-        .with_secure(false)
+        // thought the below line was necessary since we have no https
+        // .with_secure(false)
         .with_expiry(tower_sessions::Expiry::OnInactivity(time::Duration::days(
             1,
         )))
